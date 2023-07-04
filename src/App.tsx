@@ -1,4 +1,4 @@
-import { CSSProperties, useState } from "react";
+import { CSSProperties, useMemo, useState } from "react";
 import {
   BoldCommand,
   Command,
@@ -6,7 +6,7 @@ import {
   ItalicCommand,
   UnderlineCommand,
 } from "./command";
-import styles from "./App.module.css";
+import appStyles from "./App.module.css";
 
 function useHistoryManager<T>() {
   const [forwardHistory, setForwardHistory] = useState<Command<T>[]>([]);
@@ -32,19 +32,51 @@ function useHistoryManager<T>() {
     setBackHistory((prev) => prev.slice(0, -1));
     setForwardHistory((prev) => [...prev, topUndoCommand]);
   };
+
+  const undoUntil = async (index: number) => {
+    while (backHistory.length > index) {
+      await undo();
+    }
+  };
+
+  const redoUntil = async (index: number) => {
+    while (forwardHistory.length > index) {
+      await redo();
+    }
+  };
+
+  const histories = useMemo(() => {
+    const formattedBackHistory = backHistory.map((command, index) => ({
+      type: "undo",
+      command,
+      message: command.getInfo(),
+      onCall: () => undoUntil(index),
+    }));
+    const formattedForwardHistory = [...forwardHistory]
+      .reverse()
+      .map((command, index) => ({
+        type: "redo",
+        command,
+        message: command.getInfo(),
+        onCall: () => redoUntil(index),
+      }));
+    return [...formattedBackHistory, ...formattedForwardHistory];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backHistory.length, forwardHistory.length]);
+
   return {
-    forwardHistory,
-    backHistory,
     executeCommand,
     redo,
     undo,
+    histories,
   };
 }
 
 export default function App() {
   const [styles, setStyles] = useState<CSSProperties>({});
   const utils = { styles, setStyles };
-  const { executeCommand, redo, undo } = useHistoryManager<CommandUtils>();
+  const { executeCommand, redo, undo, histories } =
+    useHistoryManager<CommandUtils>();
 
   const setTextToItalic = async () => {
     const italicCommand = new ItalicCommand(utils);
@@ -62,13 +94,25 @@ export default function App() {
   };
 
   return (
-    <div className="App">
-      <p style={styles}>Hello from react!</p>
-      <button onClick={setTextToItalic}>italic</button>
-      <button onClick={setTextToBold}>bold</button>
-      <button onClick={setTextToUnderline}>underline</button>
-      <button onClick={undo}>undo</button>
-      <button onClick={redo}>redo</button>
+    <div className={appStyles.container}>
+      <div className={appStyles.editor}>
+        <p style={styles}>Hello from react!</p>
+        <button onClick={setTextToItalic}>italic</button>
+        <button onClick={setTextToBold}>bold</button>
+        <button onClick={setTextToUnderline}>underline</button>
+        <button onClick={undo}>undo</button>
+        <button onClick={redo}>redo</button>
+      </div>
+      <div className={appStyles.history}>
+        <h2>History</h2>
+        <ol>
+          {histories.map((history, index) => (
+            <li key={index + history.type + history.message}>
+              <button onClick={history.onCall}>{history.message}</button>
+            </li>
+          ))}
+        </ol>
+      </div>
     </div>
   );
 }
