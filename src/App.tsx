@@ -1,4 +1,4 @@
-import { CSSProperties, useMemo, useState } from "react";
+import { CSSProperties, useMemo, useRef, useState } from "react";
 import {
   BoldCommand,
   Command,
@@ -11,36 +11,44 @@ import appStyles from "./App.module.css";
 function useHistoryManager<T>() {
   const [forwardHistory, setForwardHistory] = useState<Command<T>[]>([]);
   const [backHistory, setBackHistory] = useState<Command<T>[]>([]);
+  const topForwardIndexRef = useRef(-1);
+  const topBackIndexRef = useRef(-1);
 
   const executeCommand = async (command: Command<T>) => {
     // clear forward history
     setForwardHistory([]);
+    topForwardIndexRef.current = -1;
     await command.execute();
     setBackHistory((prev) => [...prev, command]);
+    topBackIndexRef.current++;
   };
   const redo = async () => {
-    if (!forwardHistory.length) return;
-    const topRedoCommand = forwardHistory[forwardHistory.length - 1];
+    if (!forwardHistory.length || topForwardIndexRef.current === -1) return;
+    const topRedoCommand = forwardHistory[topForwardIndexRef.current];
     await topRedoCommand.execute();
     setForwardHistory((prev) => prev.slice(0, -1));
     setBackHistory((prev) => [...prev, topRedoCommand]);
+    topForwardIndexRef.current--;
+    topBackIndexRef.current++;
   };
   const undo = async () => {
-    if (!backHistory.length) return;
-    const topUndoCommand = backHistory[backHistory.length - 1];
+    if (!backHistory.length || topBackIndexRef.current === -1) return;
+    const topUndoCommand = backHistory[topBackIndexRef.current];
     await topUndoCommand.undo();
     setBackHistory((prev) => prev.slice(0, -1));
     setForwardHistory((prev) => [...prev, topUndoCommand]);
+    topBackIndexRef.current--;
+    topForwardIndexRef.current++;
   };
 
   const undoUntil = async (index: number) => {
-    while (backHistory.length > index) {
+    for (let i = backHistory.length - 1; i > index; i--) {
       await undo();
     }
   };
 
   const redoUntil = async (index: number) => {
-    while (forwardHistory.length > index) {
+    for (let i = forwardHistory.length - 1; i > index; i--) {
       await redo();
     }
   };
@@ -96,18 +104,49 @@ export default function App() {
   return (
     <div className={appStyles.container}>
       <div className={appStyles.editor}>
-        <p style={styles}>Hello from react!</p>
-        <button onClick={setTextToItalic}>italic</button>
-        <button onClick={setTextToBold}>bold</button>
-        <button onClick={setTextToUnderline}>underline</button>
-        <button onClick={undo}>undo</button>
-        <button onClick={redo}>redo</button>
+        <p className={appStyles.mainText} style={styles}>
+          Hello from react!
+        </p>
+        <div className={appStyles.actions}>
+          <button
+            className={appStyles.button}
+            onClick={setTextToItalic}
+            title="italic"
+          >
+            <img src="/assets/format_italic.svg" alt="italic" />
+          </button>
+          <button
+            className={appStyles.button}
+            onClick={setTextToBold}
+            title="bold"
+          >
+            <img src="/assets/format_bold.svg" alt="bold" />
+          </button>
+          <button
+            className={appStyles.button}
+            onClick={setTextToUnderline}
+            title="underline"
+          >
+            <img src="/assets/format_underline.svg" alt="underline" />
+          </button>
+          <button className={appStyles.button} onClick={undo} title="undo">
+            <img src="/assets/undo.svg" alt="undo" />
+          </button>
+          <button className={appStyles.button} onClick={redo} title="redo">
+            <img src="/assets/redo.svg" alt="redo" />
+          </button>
+        </div>
       </div>
       <div className={appStyles.history}>
-        <h2>History</h2>
-        <ol>
+        <h2 className={appStyles.historyHeader}>History</h2>
+        <ol className={appStyles.historyContent}>
           {histories.map((history, index) => (
-            <li key={index + history.type + history.message}>
+            <li
+              className={`${appStyles.historyItem} ${
+                history.type === "undo" ? appStyles.undo : appStyles.redo
+              }`}
+              key={index + history.type + history.message}
+            >
               <button onClick={history.onCall}>{history.message}</button>
             </li>
           ))}
