@@ -1,4 +1,4 @@
-import { CSSProperties, useMemo, useRef, useState } from "react";
+import { CSSProperties, useMemo, useState } from "react";
 import {
   BoldCommand,
   Command,
@@ -11,46 +11,26 @@ import appStyles from "./App.module.css";
 function useHistoryManager<T>() {
   const [forwardHistory, setForwardHistory] = useState<Command<T>[]>([]);
   const [backHistory, setBackHistory] = useState<Command<T>[]>([]);
-  const topForwardIndexRef = useRef(-1);
-  const topBackIndexRef = useRef(-1);
 
   const executeCommand = async (command: Command<T>) => {
     // clear forward history
     setForwardHistory([]);
-    topForwardIndexRef.current = -1;
     await command.execute();
     setBackHistory((prev) => [...prev, command]);
-    topBackIndexRef.current++;
   };
   const redo = async () => {
-    if (!forwardHistory.length || topForwardIndexRef.current === -1) return;
-    const topRedoCommand = forwardHistory[topForwardIndexRef.current];
+    if (!forwardHistory.length) return;
+    const topRedoCommand = forwardHistory[forwardHistory.length - 1];
     await topRedoCommand.execute();
     setForwardHistory((prev) => prev.slice(0, -1));
     setBackHistory((prev) => [...prev, topRedoCommand]);
-    topForwardIndexRef.current--;
-    topBackIndexRef.current++;
   };
   const undo = async () => {
-    if (!backHistory.length || topBackIndexRef.current === -1) return;
-    const topUndoCommand = backHistory[topBackIndexRef.current];
+    if (!backHistory.length) return;
+    const topUndoCommand = backHistory[backHistory.length - 1];
     await topUndoCommand.undo();
     setBackHistory((prev) => prev.slice(0, -1));
     setForwardHistory((prev) => [...prev, topUndoCommand]);
-    topBackIndexRef.current--;
-    topForwardIndexRef.current++;
-  };
-
-  const undoUntil = async (index: number) => {
-    for (let i = backHistory.length - 1; i > index; i--) {
-      await undo();
-    }
-  };
-
-  const redoUntil = async (index: number) => {
-    for (let i = forwardHistory.length - 1; i > index; i--) {
-      await redo();
-    }
   };
 
   const histories = useMemo(() => {
@@ -58,7 +38,6 @@ function useHistoryManager<T>() {
       type: "undo",
       command,
       message: command.getInfo(),
-      onCall: () => undoUntil(index),
     }));
     const formattedForwardHistory = [...forwardHistory]
       .reverse()
@@ -66,7 +45,6 @@ function useHistoryManager<T>() {
         type: "redo",
         command,
         message: command.getInfo(),
-        onCall: () => redoUntil(index),
       }));
     return [...formattedBackHistory, ...formattedForwardHistory];
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -140,6 +118,9 @@ export default function App() {
       <div className={appStyles.history}>
         <h2 className={appStyles.historyHeader}>History</h2>
         <ol className={appStyles.historyContent}>
+          <li className={`${appStyles.historyItem}`}>
+            <button>Initial</button>
+          </li>
           {histories.map((history, index) => (
             <li
               className={`${appStyles.historyItem} ${
@@ -147,7 +128,7 @@ export default function App() {
               }`}
               key={index + history.type + history.message}
             >
-              <button onClick={history.onCall}>{history.message}</button>
+              <button>{history.message}</button>
             </li>
           ))}
         </ol>
