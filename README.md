@@ -1,6 +1,6 @@
 # Undo Redo Using Command Pattern in React
 
-This projects is created based on my article that you can read [here](). You can also preview this by visiting this [link](https://command-pattern-undo-redo.vercel.app/).
+This projects is created based on my article that you can read [here](https://dev.to/mustafamilyas/creating-undo-redo-system-using-command-pattern-in-react-mmg). You can also preview this by visiting this [link](https://command-pattern-undo-redo.vercel.app/).
 
 ## Available Scripts
 
