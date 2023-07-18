@@ -140,6 +140,9 @@ export default function App() {
       <div className={appStyles.history}>
         <h2 className={appStyles.historyHeader}>History</h2>
         <ol className={appStyles.historyContent}>
+          <li className={appStyles.historyItem}>
+            <button>Initial State</button>
+          </li>
           {histories.map((history, index) => (
             <li
               className={`${appStyles.historyItem} ${
