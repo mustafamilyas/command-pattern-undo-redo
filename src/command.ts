@@ -5,16 +5,14 @@ export interface CommandUtils {
   setStyles: Dispatch<React.SetStateAction<CSSProperties>>;
 }
 
-export class Command<T> {
+export abstract class Command<T> {
   utils: T;
   constructor(utils: T) {
     this.utils = utils;
   }
-  execute() {}
-  undo() {}
-  getInfo() {
-    return "This is basic command";
-  }
+  abstract execute(): void;
+  abstract undo(): void;
+  abstract getInfo(): string;
 }
 
 export class ItalicCommand<T extends CommandUtils> extends Command<T> {
